@@ -7,9 +7,10 @@ FUEL_CONSUMPTION_PER_FLIGHT_HOUR = 200
 FUEL_TAKEOFF_COST = 50
 REFUEL_RATE_PER_HOUR = 500
 MAX_FUEL_CAPACITY = 1000
+DEFAULT_TIME_STEP_HOURS = 1.0
 
 
-def refuel_aircraft(aircraft: Aircraft, resources: BaseResources) -> float:
+def refuel_aircraft(aircraft: Aircraft, resources: BaseResources, step_hours: float = DEFAULT_TIME_STEP_HOURS) -> float:
     """
     Refuel an aircraft from base storage. Returns liters added.
     Only refuels MISSION_CAPABLE or HANGAR aircraft on the ground.
@@ -21,7 +22,7 @@ def refuel_aircraft(aircraft: Aircraft, resources: BaseResources) -> float:
     if needed <= 0:
         return 0.0
 
-    can_add = min(needed, REFUEL_RATE_PER_HOUR, resources.fuel_storage)
+    can_add = min(needed, REFUEL_RATE_PER_HOUR * step_hours, resources.fuel_storage)
     if can_add <= 0:
         return 0.0
 
@@ -69,9 +70,9 @@ def arm_aircraft(aircraft: Aircraft, mission: Mission, resources: BaseResources)
     )
 
 
-def consume_fuel_in_flight(aircraft: Aircraft) -> str | None:
+def consume_fuel_in_flight(aircraft: Aircraft, step_hours: float = DEFAULT_TIME_STEP_HOURS) -> str | None:
     """Deduct fuel during mission. Returns warning message or None."""
-    aircraft.fuel_level -= FUEL_CONSUMPTION_PER_FLIGHT_HOUR
+    aircraft.fuel_level -= FUEL_CONSUMPTION_PER_FLIGHT_HOUR * step_hours
     if aircraft.fuel_level < 0:
         aircraft.fuel_level = 0
         return f"Aircraft {aircraft.id} emergency — fuel critically low"

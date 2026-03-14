@@ -29,6 +29,11 @@ from game.resource_manager import (
     consume_fuel_in_flight,
     FUEL_TAKEOFF_COST,
 )
+from scenarios.default_scenario import CAMPAIGN_DAYS
+
+TIME_STEP_HOURS = 1.0
+PRE_FLIGHT_DURATION_HOURS = 4.0
+POST_FLIGHT_DURATION_HOURS = 6.0
 
 
 def _event(state: GameState, message: str, severity: str = "info", aircraft_id: str | None = None) -> GameEvent:
@@ -50,17 +55,17 @@ def execute_turn(state: GameState) -> None:
     for ac in state.aircraft:
         if ac.status != AircraftStatus.ON_MISSION:
             continue
-        ac.mission_hours_remaining -= 1
-        ac.total_flight_hours += 1
-        ac.hours_until_service -= 1
-        warning = consume_fuel_in_flight(ac)
+        ac.mission_hours_remaining -= TIME_STEP_HOURS
+        ac.total_flight_hours += TIME_STEP_HOURS
+        ac.hours_until_service -= TIME_STEP_HOURS
+        warning = consume_fuel_in_flight(ac, TIME_STEP_HOURS)
         if warning:
             ev = _event(state, warning, "critical", ac.id)
             state.turn_results.append(ev)
             state.event_log.append(ev)
         if ac.mission_hours_remaining <= 0:
             ac.status = AircraftStatus.POST_FLIGHT
-            ac.post_flight_hours_remaining = 0.5
+            ac.post_flight_hours_remaining = POST_FLIGHT_DURATION_HOURS
             ac.assigned_mission_id = None
             # Mark mission completed
             if state.current_ato:
@@ -80,7 +85,7 @@ def execute_turn(state: GameState) -> None:
     for ac in state.aircraft:
         if ac.status != AircraftStatus.PRE_FLIGHT:
             continue
-        ac.pre_flight_hours_remaining -= 1
+        ac.pre_flight_hours_remaining -= TIME_STEP_HOURS
         if ac.pre_flight_hours_remaining <= 0:
             ok, maint_info = pre_flight_check()
             if ok:
@@ -97,7 +102,7 @@ def execute_turn(state: GameState) -> None:
     for ac in state.aircraft:
         if ac.status != AircraftStatus.POST_FLIGHT:
             continue
-        ac.post_flight_hours_remaining -= 1
+        ac.post_flight_hours_remaining -= TIME_STEP_HOURS
         if ac.post_flight_hours_remaining <= 0:
             # Weapon loss roll
             if ac.weapon_loadout.missiles > 0:
@@ -142,7 +147,7 @@ def execute_turn(state: GameState) -> None:
         if crews_used >= crews_available:
             continue  # No available crews
         crews_used += 1
-        ac.maintenance.hours_remaining -= 1
+        ac.maintenance.hours_remaining -= TIME_STEP_HOURS
         if ac.maintenance.hours_remaining <= 0:
             variance = maintenance_time_variance()
             if variance > 1.0:
@@ -160,10 +165,19 @@ def execute_turn(state: GameState) -> None:
     # --- Step 5: Launch scheduled missions ---
     if state.current_ato and state.runway_damaged_hours <= 0:
         for mission in state.current_ato.missions:
-            if mission.scheduled_hour != state.current_hour:
+            if not (state.current_hour <= mission.scheduled_hour < state.current_hour + TIME_STEP_HOURS):
                 continue
             if mission.status not in (MissionStatus.AIRCRAFT_ASSIGNED, MissionStatus.PENDING):
                 continue
+
+            # Realism: Missions must be planned at least 24h in advance
+            if not mission.is_planned:
+                mission.status = MissionStatus.FAILED
+                ev = _event(state, f"Mission {mission.id} FAILED — No approved flight plan (planning deadline missed)", "critical")
+                state.turn_results.append(ev)
+                state.event_log.append(ev)
+                continue
+
             if mission.status == MissionStatus.PENDING and not mission.assigned_aircraft_ids:
                 mission.status = MissionStatus.FAILED
                 ev = _event(state, f"Mission {mission.id} FAILED — no aircraft assigned", "critical")
@@ -186,6 +200,7 @@ def execute_turn(state: GameState) -> None:
                 # Launch
                 ac.status = AircraftStatus.ON_MISSION
                 ac.mission_hours_remaining = mission.duration_hours
+                ac.assigned_mission_id = mission.id
                 ac.fuel_level = max(0, ac.fuel_level - FUEL_TAKEOFF_COST)
                 launched.append(ac_id)
                 ev = _event(state, f"Aircraft {ac_id} launched on {mission.type.value} mission {mission.id}", "info", ac_id)
@@ -216,10 +231,10 @@ def execute_turn(state: GameState) -> None:
     # Refuel on-ground aircraft
     for ac in state.aircraft:
         if ac.status in (AircraftStatus.MISSION_CAPABLE, AircraftStatus.HANGAR):
-            refuel_aircraft(ac, state.resources)
+            refuel_aircraft(ac, state.resources, TIME_STEP_HOURS)
 
     # UE cycles at hour 0
-    if state.current_hour == 0:
+    if abs(state.current_hour) < 1e-9:
         ue_messages = process_ue_cycles(state.resources)
         for msg in ue_messages:
             ev = _event(state, msg, "info")
@@ -227,7 +242,7 @@ def execute_turn(state: GameState) -> None:
             state.event_log.append(ev)
 
     # --- Step 7: Personnel ---
-    state.personnel.shift_hours_remaining -= 1
+    state.personnel.shift_hours_remaining -= TIME_STEP_HOURS
     if state.personnel.shift_hours_remaining <= 0:
         state.personnel.maintenance_crews_on_duty = (
             state.personnel.maintenance_crews_total - state.personnel.maintenance_crews_on_duty
@@ -239,14 +254,15 @@ def execute_turn(state: GameState) -> None:
 
     # Runway repair countdown
     if state.runway_damaged_hours > 0:
-        state.runway_damaged_hours -= 1
+        state.runway_damaged_hours -= TIME_STEP_HOURS
         if state.runway_damaged_hours <= 0:
             ev = _event(state, "Runway repairs complete — operations resuming", "success")
             state.turn_results.append(ev)
             state.event_log.append(ev)
 
     # --- Step 8: Advance time ---
-    state.current_hour += 1
+    previous_hour = state.current_hour
+    state.current_hour += TIME_STEP_HOURS
     state.current_turn += 1
 
     if state.current_hour >= 24:
@@ -257,14 +273,14 @@ def execute_turn(state: GameState) -> None:
         state.turn_results.append(ev)
         state.event_log.append(ev)
 
-        if state.current_day > 7:
+        if state.current_day > CAMPAIGN_DAYS:
             state.is_game_over = True
-            ev = _event(state, "Scenario complete! 7-day exercise finished.", "success")
+            ev = _event(state, f"Scenario complete! {CAMPAIGN_DAYS}-day exercise finished.", "success")
             state.turn_results.append(ev)
             state.event_log.append(ev)
 
     # --- Day 4 CM Attack Event ---
-    if state.current_day == 4 and state.current_hour == 12:
+    if state.current_day == 4 and previous_hour < 12 <= state.current_hour:
         _cm_attack_event(state)
 
     # --- Step 9: Auto-prep ---
@@ -277,7 +293,7 @@ def execute_turn(state: GameState) -> None:
         hangar_aircraft = [ac for ac in state.aircraft if ac.status == AircraftStatus.HANGAR and ac.assigned_mission_id is None]
         for ac in hangar_aircraft[:max(0, upcoming_needs)]:
             ac.status = AircraftStatus.PRE_FLIGHT
-            ac.pre_flight_hours_remaining = 1.0
+            ac.pre_flight_hours_remaining = PRE_FLIGHT_DURATION_HOURS
             ev = _event(state, f"Aircraft {ac.id} auto-starting pre-flight preparation", "info", ac.id)
             state.turn_results.append(ev)
             state.event_log.append(ev)
@@ -285,10 +301,10 @@ def execute_turn(state: GameState) -> None:
 
 def _cm_attack_event(state: GameState) -> None:
     """Day 4 cruise missile attack event."""
-    ev = _event(state, "BASE UNDER CRUISE MISSILE ATTACK! Runway damaged — 2h repair needed!", "critical")
+    ev = _event(state, "BASE UNDER CRUISE MISSILE ATTACK! Runway damaged — 8h repair needed!", "critical")
     state.turn_results.append(ev)
     state.event_log.append(ev)
-    state.runway_damaged_hours = 2
+    state.runway_damaged_hours = 8
 
     # All PRE_FLIGHT aircraft reset to HANGAR
     for ac in state.aircraft:
@@ -307,11 +323,11 @@ def _cm_attack_event(state: GameState) -> None:
         ac.status = AircraftStatus.MAINTENANCE
         ac.maintenance = MaintenanceInfo(
             type=MaintenanceType.COMPOSITE_REPAIR,
-            total_hours=4.0,
-            hours_remaining=4.0,
+            total_hours=240.0,
+            hours_remaining=240.0,
             requires_ue=False,
             facility="Battle Damage Repair"
         )
-        ev = _event(state, f"Aircraft {ac.id} damaged in attack — 4h repair needed", "critical", ac.id)
+        ev = _event(state, f"Aircraft {ac.id} damaged in attack — 240h (10-day) repair needed", "critical", ac.id)
         state.turn_results.append(ev)
         state.event_log.append(ev)

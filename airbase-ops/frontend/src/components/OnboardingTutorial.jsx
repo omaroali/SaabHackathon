@@ -11,10 +11,10 @@ const STEPS = [
     title: 'Welcome, Commander',
     icon: Plane,
     color: '#3b82f6',
-    content: 'You are the base commander (basbatchef) of a Swedish Gripen air base. Your job is to manage 10 fighter jets over a 7-day scenario that escalates from Peace to Crisis to War.',
+    content: 'You are the base commander (basbatchef) of a Swedish Gripen air base. Your job is to manage 10 fighter jets over a 30-day campaign that escalates from Peace to Crisis to War.',
     details: [
       'Each turn = 1 hour of simulated time',
-      'Day 1 is peaceful, Days 2-4 are Crisis, Days 5-7 are War',
+      'Days 1-10 are Peace, Days 11-20 are Crisis, Days 21-30 are War',
       'Mission tempo increases as the situation escalates',
     ],
   },
@@ -24,9 +24,9 @@ const STEPS = [
     color: '#22c55e',
     content: 'Every day you receive an Air Tasking Order (ATO) — a list of missions you must fly. Your job is to prepare aircraft, assign them, and advance time.',
     details: [
-      '1. PREP aircraft in the hangar (takes 1 hour)',
+      '1. PREP aircraft in the hangar (takes 4 hours)',
       '2. ASSIGN ready aircraft to ATO missions',
-      '3. ADVANCE TIME with the 1H or 4H buttons',
+      '3. ADVANCE TIME with the 1H or 1D buttons',
       '4. Watch missions fly, aircraft land, and results unfold',
     ],
   },
@@ -37,7 +37,7 @@ const STEPS = [
     content: 'Each aircraft cycles through states. Understanding these is key:',
     details: [
       'HANGAR — Not ready. Click "PREP" to begin preparation',
-      'PREPPING — Being prepared (1 hour). May discover faults!',
+      'PREPPING — Being prepared (takes 4 hours). May discover faults!',
       'READY — Mission capable. Can be assigned to missions',
       'ON MISSION — Flying. Will return after mission duration',
       'LANDING — Post-flight checks. 50% chance of needing maintenance',

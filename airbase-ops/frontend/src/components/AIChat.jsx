@@ -35,6 +35,38 @@ export default function AIChat({ isOpen, onClose, onSend }) {
     }
   };
 
+  const renderMessage = (text, role) => {
+    if (role === 'user') return text;
+
+    // Simple manual markdown-lite parsing for bold and bullets
+    const lines = String(text || '').split('\n');
+    return lines.map((line, idx) => {
+      let content = line.trim();
+      let isBullet = false;
+      
+      if (content.startsWith('* ') || content.startsWith('- ')) {
+        content = content.substring(2);
+        isBullet = true;
+      }
+
+      // Handle bold **text**
+      const parts = content.split(/(\*\*.*?\*\*)/g);
+      const renderedLine = parts.map((part, pidx) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={pidx} style={{ color: 'var(--ai-accent)', fontWeight: 800 }}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+
+      return (
+        <div key={idx} className={`${isBullet ? 'pl-4 relative' : ''} ${content === '' ? 'h-2' : 'mb-1.5'}`}>
+          {isBullet && <span className="absolute left-1 top-1.5 w-1 h-1 rounded-full bg-cyan-500/50" />}
+          {renderedLine}
+        </div>
+      );
+    });
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -89,14 +121,19 @@ export default function AIChat({ isOpen, onClose, onSend }) {
                 background: 'var(--bg-primary)',
                 borderLeft: '2px solid var(--ai-accent)',
                 color: 'var(--text-primary)',
-                fontFamily: "'JetBrains Mono', monospace",
                 fontSize: '11px',
               } : {
                 background: 'rgba(59,130,246,0.15)',
                 border: '1px solid rgba(59,130,246,0.2)',
                 color: 'var(--text-primary)',
               }}>
-              {msg.text}
+              <div style={{
+                wordBreak: 'break-word',
+                fontFamily: msg.role === 'ai' ? "'Inter', sans-serif" : 'inherit',
+                lineHeight: 1.55,
+              }}>
+                {renderMessage(msg.text, msg.role)}
+              </div>
             </div>
           </div>
         ))}

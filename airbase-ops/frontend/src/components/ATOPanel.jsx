@@ -8,7 +8,7 @@ const PHASE_STYLES = {
   WAR: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444', label: 'WAR' },
 };
 
-export default function ATOPanel({ ato, aircraft, phase, onAssign, onUnassign, onAiSuggest, loading }) {
+export default function ATOPanel({ ato, aircraft, phase, currentHour, onAssign, onUnassign, onPlan, onAiSuggest, loading }) {
   if (!ato) return null;
 
   const phaseStyle = PHASE_STYLES[phase] || PHASE_STYLES.PEACE;
@@ -69,8 +69,8 @@ export default function ATOPanel({ ato, aircraft, phase, onAssign, onUnassign, o
         {loading ? 'Analyzing Fleet...' : 'AI Suggest Allocation'}
       </ShimmerButton>
 
-      {/* Mission List — staggered */}
-      <div className="flex-1 overflow-y-auto stagger-fade-in">
+      {/* Mission List — staggered + padding for dropdowns */}
+      <div className="flex-1 overflow-y-auto pb-24 stagger-fade-in">
         {ato.missions
           .sort((a, b) => a.scheduled_hour - b.scheduled_hour)
           .map(mission => (
@@ -78,8 +78,10 @@ export default function ATOPanel({ ato, aircraft, phase, onAssign, onUnassign, o
               key={mission.id}
               mission={mission}
               aircraft={aircraft}
+              currentHour={currentHour}
               onAssign={onAssign}
               onUnassign={onUnassign}
+              onPlan={onPlan}
             />
           ))}
       </div>

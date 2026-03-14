@@ -3,6 +3,7 @@ import {
   ArrowRight, Plane, Target, Clock, Wrench, Fuel,
   AlertTriangle, CheckCircle, ChevronRight
 } from 'lucide-react';
+import { formatClockTime, formatHoursUntil } from '../lib/format';
 
 /**
  * Smart "What to do next" hint bar — analyzes game state and
@@ -32,7 +33,7 @@ export default function NextActionHint({ gameState }) {
         icon: CheckCircle,
         color: '#22c55e',
         title: 'Scenario Complete!',
-        text: 'The 7-day scenario is finished. Review your event log to see how it went.',
+        text: 'The 30-day campaign is finished. Review your event log to see how it went.',
         action: null,
       };
     }
@@ -56,7 +57,7 @@ export default function NextActionHint({ gameState }) {
         icon: Target,
         color: '#ef4444',
         title: 'Assign Aircraft to Missions',
-        text: `${pendingMissions.length} mission${pendingMissions.length > 1 ? 's' : ''} need aircraft. Next: ${nextMission.type} at ${String(nextMission.scheduled_hour).padStart(2,'0')}:00 (${hoursUntil > 0 ? `in ${hoursUntil}h` : 'NOW'}). Click "+ Assign" in the ATO panel.`,
+        text: `${pendingMissions.length} mission${pendingMissions.length > 1 ? 's' : ''} need aircraft. Next: ${nextMission.type} at ${formatClockTime(nextMission.scheduled_hour)} (${hoursUntil > 0 ? formatHoursUntil(hoursUntil) : 'now'}). Click "+ Assign" in the ATO panel.`,
         action: 'assign',
       };
     }
@@ -79,7 +80,7 @@ export default function NextActionHint({ gameState }) {
         icon: Plane,
         color: '#eab308',
         title: 'Prep Aircraft',
-        text: `${pendingMissions.length} missions pending but 0 aircraft ready. Click "PREP" on aircraft in the hangar to start preparing them (takes 1 hour).`,
+        text: `${pendingMissions.length} missions pending but 0 aircraft ready. Click "PREP" on aircraft in the hangar to start preparing them (takes 4 hours).`,
         action: 'prep',
       };
     }
@@ -103,7 +104,7 @@ export default function NextActionHint({ gameState }) {
         icon: Clock,
         color: '#22c55e',
         title: 'All Missions Assigned',
-        text: `Advance time to launch missions. Next sortie: ${nextLaunch.type} at ${String(nextLaunch.scheduled_hour).padStart(2,'0')}:00${hoursUntil > 0 ? ` (in ${hoursUntil}h). Use "4H" to skip ahead quickly.` : ' — launching NOW. Click "1H".'}`,
+        text: `Advance time to launch missions. Next sortie: ${nextLaunch.type} at ${formatClockTime(nextLaunch.scheduled_hour)}${hoursUntil > 0 ? ` (${formatHoursUntil(hoursUntil)}). Use "1D" to skip ahead quickly.` : ' — launching now. Click "1H".'}`,
         action: 'advance',
       };
     }
@@ -115,7 +116,7 @@ export default function NextActionHint({ gameState }) {
         icon: CheckCircle,
         color: '#22c55e',
         title: 'Day Complete',
-        text: 'All missions for today are done. Advance time to proceed to the next day and receive new orders. Use "4H" to skip ahead.',
+        text: 'All missions for today are done. Advance time to proceed to the next day and receive new orders. Use "1D" to skip ahead.',
         action: 'advance',
       };
     }
@@ -127,7 +128,7 @@ export default function NextActionHint({ gameState }) {
         icon: Wrench,
         color: '#8b5cf6',
         title: 'Waiting for Repairs',
-        text: `${inMaint.length} aircraft under maintenance. Advance time to complete repairs. Try "4H" to skip ahead.`,
+        text: `${inMaint.length} aircraft under maintenance. Advance time to complete repairs. Try "1D" to skip ahead.`,
         action: 'advance',
       };
     }
@@ -137,7 +138,7 @@ export default function NextActionHint({ gameState }) {
       icon: ArrowRight,
       color: 'var(--text-secondary)',
       title: 'Advance Time',
-      text: 'Click "1H" or "4H" to progress the simulation forward.',
+      text: 'Click "1H" or "1D" to progress the simulation forward.',
       action: 'advance',
     };
   }, [gameState]);
@@ -159,12 +160,15 @@ export default function NextActionHint({ gameState }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[11px] font-bold" style={{ color: hint.color }}>
-            {hint.title}
+            WHAT TO DO NOW: {hint.title}
           </span>
           <ChevronRight size={10} style={{ color: hint.color, opacity: 0.5 }} />
         </div>
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
           {hint.text}
+        </p>
+        <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+          If you are unsure, open <strong>How to Play</strong> in the top bar for a step-by-step guide.
         </p>
       </div>
     </div>

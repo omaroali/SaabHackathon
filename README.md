@@ -12,7 +12,7 @@ The game digitizes the physical board game Saab uses to train logistics staff fo
 - Assign aircraft to daily Air Tasking Orders (ATO) across QRA, DCA, RECCE, and ATTACK mission types
 - Track and balance resources: fuel, missiles, bombs, pods, spare parts, exchange units, and maintenance crews
 - Advance time turn-by-turn (1 hour per turn) watching aircraft move through pre-flight, missions, and maintenance
-- Get AI-powered tactical advice from an embedded DeepSeek-backed advisor
+- Get AI-powered tactical advice from an embedded OpenRouter-backed advisor
 - Save and load game state between sessions
 
 ---
@@ -23,7 +23,7 @@ The game digitizes the physical board game Saab uses to train logistics staff fo
 |----------|-----------------------------------------|
 | Frontend | React 19, Vite, Tailwind CSS v4, Recharts |
 | Backend  | FastAPI, Python 3.11, Pydantic v2       |
-| AI       | DeepSeek API (`deepseek-chat`)          |
+| AI       | OpenRouter API (`deepseek/deepseek-chat`) |
 
 ---
 
@@ -32,7 +32,7 @@ The game digitizes the physical board game Saab uses to train logistics staff fo
 ```
 airbase-ops/
 ├── backend/
-│   ├── ai/            # DeepSeek AI advisor
+│   ├── ai/            # OpenRouter AI advisor
 │   ├── api/           # FastAPI route handlers
 │   ├── game/          # Turn engine, dice, maintenance, resource logic
 │   ├── models/        # Pydantic data models (aircraft, missions, resources)
@@ -56,7 +56,7 @@ airbase-ops/
 
 - Python 3.11+
 - Node.js 18+
-- A [DeepSeek API key](https://platform.deepseek.com/)
+- An [OpenRouter API key](https://openrouter.ai/)
 
 ---
 
@@ -74,7 +74,7 @@ pip install -r requirements.txt
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env and add your DeepSeek API key
+# Edit .env and add your OpenRouter API key
 
 # Start the server
 uvicorn main:app --reload --port 8000
@@ -108,7 +108,7 @@ cp airbase-ops/backend/.env.example airbase-ops/backend/.env
 
 | Variable          | Description                        | Required |
 |-------------------|------------------------------------|----------|
-| `DEEPSEEK_API_KEY` | Your DeepSeek API key             | Yes      |
+| `OPENROUTER_API_KEY` | Your OpenRouter API key             | Yes      |
 
 Without the API key, the AI advisor will show an offline message but the rest of the game works normally.
 

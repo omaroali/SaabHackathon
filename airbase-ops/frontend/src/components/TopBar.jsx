@@ -1,5 +1,6 @@
-import { Plane, Clock, CalendarDays, Play, FastForward, RotateCcw, MessageSquare, HelpCircle } from 'lucide-react';
+import { Plane, Clock, CalendarDays, Play, FastForward, RotateCcw, MessageSquare, HelpCircle, GitCompareArrows } from 'lucide-react';
 import ShimmerButton from './ShimmerButton';
+import { formatClockTime } from '../lib/format';
 
 const PHASE_STYLES = {
   PEACE: { bg: 'bg-green-900/40', text: 'text-green-400', border: 'border-green-500/50', label: 'PEACE', color: '#22c55e' },
@@ -7,15 +8,15 @@ const PHASE_STYLES = {
   WAR: { bg: 'bg-red-900/40', text: 'text-red-400', border: 'border-red-500/50', label: 'WAR', color: '#ef4444' },
 };
 
-export default function TopBar({ gameState, onAdvance, onAdvanceMultiple, onNewGame, onToggleChat, onToggleHelp, loading }) {
+export default function TopBar({ gameState, onAdvance, onAdvanceMultiple, onNewGame, onToggleChat, onToggleHelp, onCompare, loading, helpAttention = false }) {
   const { current_day, current_hour, current_turn, phase } = gameState;
   const phaseStyle = PHASE_STYLES[phase] || PHASE_STYLES.PEACE;
-  const timeStr = `${String(current_hour).padStart(2, '0')}:00`;
-  const totalTurns = 168;
+  const timeStr = formatClockTime(current_hour);
+  const totalTurns = 720;
   const progressPct = (current_turn / totalTurns) * 100;
 
   return (
-    <div className="glass-panel px-5 py-3 flex items-center justify-between gap-4 relative"
+    <div className="glass-panel px-5 py-3 flex flex-wrap items-center justify-between gap-4 relative"
       style={{ borderBottom: '1px solid var(--border-color)' }}>
 
       {/* Overall progress bar at bottom */}
@@ -48,11 +49,11 @@ export default function TopBar({ gameState, onAdvance, onAdvanceMultiple, onNewG
       </div>
 
       {/* Center — Day, Phase, Time */}
-      <div className="flex items-center gap-5">
+      <div className="flex flex-wrap items-center gap-5 min-w-0">
         <div className="flex items-center gap-2">
           <CalendarDays size={14} style={{ color: 'var(--text-secondary)' }} />
           <span className="font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            DAY {current_day} / 7
+            DAY {current_day} / 30
           </span>
         </div>
 
@@ -68,7 +69,7 @@ export default function TopBar({ gameState, onAdvance, onAdvanceMultiple, onNewG
         {/* Animated clock */}
         <div className="flex items-center gap-2 relative">
           <Clock size={14} style={{ color: 'var(--text-secondary)' }} />
-          <span className="font-mono text-2xl font-bold" style={{
+          <span className="font-mono text-xl md:text-2xl font-bold" style={{
             color: 'var(--text-primary)',
             textShadow: `0 0 20px ${phaseStyle.color}30`,
           }}>
@@ -97,12 +98,20 @@ export default function TopBar({ gameState, onAdvance, onAdvanceMultiple, onNewG
         </ShimmerButton>
 
         <ShimmerButton
-          onClick={() => onAdvanceMultiple(4)}
+          onClick={() => onAdvanceMultiple(24)}
           disabled={loading || gameState.is_game_over}
           variant="ghost"
           className="px-4 py-2 rounded-lg"
         >
-          <FastForward size={12} /> 4H
+          <FastForward size={12} /> 1D
+        </ShimmerButton>
+
+        <ShimmerButton
+          onClick={onCompare}
+          variant="ghost"
+          className="px-3 py-2 rounded-lg"
+        >
+          <GitCompareArrows size={12} /> Compare
         </ShimmerButton>
 
         <ShimmerButton
@@ -115,20 +124,29 @@ export default function TopBar({ gameState, onAdvance, onAdvanceMultiple, onNewG
 
         <button onClick={onToggleHelp}
           title="How to Play (?)"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs transition-all duration-200"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg font-mono text-xs transition-all duration-300 overflow-hidden"
           style={{
-            color: 'var(--text-muted)',
-            border: '1px solid var(--border-color)',
+            color: helpAttention ? '#8b5cf6' : 'var(--text-muted)',
+            border: `1px solid ${helpAttention ? '#8b5cf6' : 'var(--border-color)'}`,
+            background: helpAttention ? 'rgba(139,92,246,0.14)' : 'transparent',
+            boxShadow: helpAttention ? '0 0 18px rgba(139,92,246,0.2)' : 'none',
           }}
           onMouseEnter={e => {
             e.currentTarget.style.borderColor = '#8b5cf6';
             e.currentTarget.style.color = '#8b5cf6';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'var(--border-color)';
-            e.currentTarget.style.color = 'var(--text-muted)';
+            e.currentTarget.style.borderColor = helpAttention ? '#8b5cf6' : 'var(--border-color)';
+            e.currentTarget.style.color = helpAttention ? '#8b5cf6' : 'var(--text-muted)';
           }}>
           <HelpCircle size={12} />
+          <span className="whitespace-nowrap" style={{
+            maxWidth: helpAttention ? '120px' : '0px',
+            opacity: helpAttention ? 1 : 0,
+            transition: 'max-width 300ms ease, opacity 300ms ease',
+          }}>
+            How to Play
+          </span>
         </button>
 
         <button onClick={onNewGame}

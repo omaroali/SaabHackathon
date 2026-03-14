@@ -11,9 +11,9 @@ const SECTIONS = [
     color: '#22c55e',
     items: [
       { term: '1. Start of Day', desc: 'Receive ATO (Air Tasking Order) — your mission list for the day.' },
-      { term: '2. Prep Aircraft', desc: 'Click "PREP" on hangar aircraft. Takes 1 hour to complete.' },
+      { term: '2. Prep Aircraft', desc: 'Click "PREP" on hangar aircraft. Takes 4 hours to complete.' },
       { term: '3. Assign to Missions', desc: 'Click "+ Assign" on ATO missions. Pick from ready aircraft.' },
-      { term: '4. Advance Time', desc: 'Click "1H" or "4H". Missions launch at their scheduled hour.' },
+      { term: '4. Advance Time', desc: 'Click "1H" or "1D". Missions launch at their scheduled hour.' },
       { term: '5. Results', desc: 'Aircraft return, get checked, may need maintenance. Repeat!' },
     ],
   },
@@ -23,7 +23,7 @@ const SECTIONS = [
     color: '#3b82f6',
     items: [
       { term: 'HANGAR (Grey)', desc: 'Not ready. Click "PREP" to start pre-flight preparation.' },
-      { term: 'PREPPING (Yellow)', desc: 'Being prepared. Completes in 1 hour. 33% chance of discovering a fault.' },
+      { term: 'PREPPING (Yellow)', desc: 'Being prepared. Completes in 4 hours. 33% chance of discovering a fault.' },
       { term: 'READY (Green)', desc: 'Mission capable! Can be assigned to ATO missions.' },
       { term: 'ON MISSION (Blue)', desc: 'Currently flying. Returns after the mission duration.' },
       { term: 'LANDING (Yellow)', desc: 'Post-flight check. 50% chance of needing maintenance.' },
@@ -59,7 +59,7 @@ const SECTIONS = [
     icon: HelpCircle,
     color: '#8b5cf6',
     items: [
-      { term: 'Top Bar', desc: 'Day/time, phase indicator, advance buttons (1H/4H), AI toggle, reset.' },
+      { term: 'Top Bar', desc: 'Day/time, phase indicator, advance buttons (1H/1D), AI toggle, reset.' },
       { term: 'Left Panel (ATO)', desc: 'Today\'s missions. Click +Assign, or use "AI Suggest" for auto-assignment.' },
       { term: 'Center (Fleet)', desc: '10 aircraft cards. Click to view details. "PREP" to start from hangar.' },
       { term: 'Right Panel (Resources)', desc: 'Base fuel, weapons, spare parts, exchange units, personnel.' },

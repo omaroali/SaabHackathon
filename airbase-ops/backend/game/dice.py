@@ -10,7 +10,7 @@ def pre_flight_check() -> tuple[bool, MaintenanceInfo | None]:
     """
     Roll for pre-flight (Loading, Fueling, Arming, BIT startup).
     Roll 1-4: OK
-    Roll 5-6: Fault — Quick LRU replacement, 2 hours
+    Roll 5-6: Fault — Quick LRU replacement, 48 hours
     """
     roll = roll_d6()
     if roll <= 4:
@@ -18,8 +18,8 @@ def pre_flight_check() -> tuple[bool, MaintenanceInfo | None]:
     else:
         return False, MaintenanceInfo(
             type=MaintenanceType.QUICK_LRU,
-            total_hours=2.0,
-            hours_remaining=2.0,
+            total_hours=48.0,
+            hours_remaining=48.0,
             requires_ue=True,
             facility="Service Bay (Flight Line)"
         )
@@ -29,9 +29,9 @@ def post_flight_check() -> tuple[bool, MaintenanceInfo | None]:
     """
     Roll for post-flight reception.
     Roll 1-3: OK
-    Roll 4: Complex LRU, 6h
-    Roll 5: Direct repair, 16h
-    Roll 6: Troubleshoot, 4h
+    Roll 4: Complex LRU, 168h (7 days)
+    Roll 5: Direct repair, 360h (15 days)
+    Roll 6: Troubleshoot, 72h (3 days)
     """
     roll = roll_d6()
     outcomes = {
@@ -40,22 +40,22 @@ def post_flight_check() -> tuple[bool, MaintenanceInfo | None]:
         3: (True, None),
         4: (False, MaintenanceInfo(
             type=MaintenanceType.COMPLEX_LRU,
-            total_hours=6.0,
-            hours_remaining=6.0,
+            total_hours=168.0,
+            hours_remaining=168.0,
             requires_ue=True,
             facility="Minor Maint Workshop"
         )),
         5: (False, MaintenanceInfo(
             type=MaintenanceType.DIRECT_REPAIR,
-            total_hours=16.0,
-            hours_remaining=16.0,
+            total_hours=360.0,
+            hours_remaining=360.0,
             requires_ue=False,
             facility="Major Maint Workshop"
         )),
         6: (False, MaintenanceInfo(
             type=MaintenanceType.TROUBLESHOOT,
-            total_hours=4.0,
-            hours_remaining=4.0,
+            total_hours=72.0,
+            hours_remaining=72.0,
             requires_ue=False,
             facility="Service Bay"
         )),

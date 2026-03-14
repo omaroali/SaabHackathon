@@ -14,14 +14,23 @@ import ShimmerButton from './components/ShimmerButton';
 import OnboardingTutorial from './components/OnboardingTutorial';
 import NextActionHint from './components/NextActionHint';
 import HelpPanel from './components/HelpPanel';
-import { Plane, Shield, Crosshair, ChevronRight, Radar, Zap, HelpCircle } from 'lucide-react';
+import DecisionImpactPanel from './components/DecisionImpactPanel';
+import CompareMode from './components/CompareMode';
+import AIRecommendationCards from './components/AIRecommendationCards';
+import TacticalMap from './components/TacticalMap';
+import WidgetPanel from './components/WidgetPanel';
+import { Plane, Shield, Crosshair, ChevronRight, Radar, AlertTriangle, ScrollText } from 'lucide-react';
 
 export default function App() {
   const {
     gameState, loading, error,
+    metrics, prevMetrics,
+    comparison, compareLoading,
+    recommendations, recsLoading,
     fetchState, startGame, advanceTurn, advanceMultiple,
-    assignAircraft, unassignAircraft, prepAircraft, armAircraft,
+    assignAircraft, unassignAircraft, planMission, prepAircraft, armAircraft,
     aiSuggest, aiChatSend,
+    fetchCompare, fetchRecommendations, fetchMetrics,
   } = useGameState();
 
   const [selectedAircraft, setSelectedAircraft] = useState(null);
@@ -29,6 +38,11 @@ export default function App() {
   const [dashboardReady, setDashboardReady] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+  const [showRecs, setShowRecs] = useState(false);
+  const [showEventLog, setShowEventLog] = useState(false);
+  const [centerView, setCenterView] = useState('map');
+  const [helpAttention, setHelpAttention] = useState(false);
 
   useEffect(() => {
     fetchState();
@@ -51,6 +65,37 @@ export default function App() {
     }
   }, [gameState]);
 
+  useEffect(() => {
+    if (!selectedAircraft || !gameState) return;
+    const freshAircraft = gameState.aircraft.find((aircraft) => aircraft.id === selectedAircraft.id);
+    setSelectedAircraft(freshAircraft || null);
+  }, [gameState, selectedAircraft]);
+
+  useEffect(() => {
+    if (!gameState || showHelp) {
+      setHelpAttention(false);
+      return;
+    }
+
+    let timeoutId;
+    const resetIdleTimer = () => {
+      setHelpAttention(false);
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        setHelpAttention(true);
+      }, 20000);
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+    events.forEach((eventName) => window.addEventListener(eventName, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      events.forEach((eventName) => window.removeEventListener(eventName, resetIdleTimer));
+    };
+  }, [gameState, showHelp]);
+
   // Keyboard shortcut: ? for help panel
   useEffect(() => {
     const handler = (e) => {
@@ -63,6 +108,8 @@ export default function App() {
       if (e.key === 'Escape') {
         setShowHelp(false);
         setShowOnboarding(false);
+        setShowCompare(false);
+        setShowRecs(false);
       }
     };
     window.addEventListener('keydown', handler);
@@ -75,12 +122,31 @@ export default function App() {
   };
 
   const handleAiSuggest = async () => {
-    const result = await aiSuggest();
-    if (result?.assignments) {
-      for (const assignment of result.assignments) {
+    setShowRecs(true);
+    const result = await fetchRecommendations();
+    if (!result) {
+      const fallback = await aiSuggest();
+      if (fallback?.assignments) {
+        for (const assignment of fallback.assignments) {
+          await assignAircraft(assignment.mission_id, assignment.aircraft_ids);
+        }
+      }
+      setShowRecs(false);
+    }
+  };
+
+  const handleApplyRecommendations = async () => {
+    if (recommendations?.assignments) {
+      for (const assignment of recommendations.assignments) {
         await assignAircraft(assignment.mission_id, assignment.aircraft_ids);
       }
     }
+    setShowRecs(false);
+  };
+
+  const handleCompare = () => {
+    setShowCompare(true);
+    fetchCompare();
   };
 
   const handleArm = (aircraftId) => {
@@ -116,10 +182,6 @@ export default function App() {
               }}>
               <Plane size={40} className="text-white" />
             </div>
-            <div className="absolute -inset-3 rounded-3xl border border-blue-500/20"
-              style={{ animation: 'pulse-glow 2s ease-in-out infinite' }} />
-            <div className="absolute -inset-6 rounded-[20px] border border-blue-500/10"
-              style={{ animation: 'pulse-glow 2s ease-in-out infinite', animationDelay: '0.5s' }} />
           </div>
 
           <h1 className="font-mono text-5xl font-bold mb-3 tracking-[0.2em]" style={{ color: 'var(--text-primary)' }}>
@@ -129,64 +191,8 @@ export default function App() {
             Gripen Dispersed Air Base Operations Simulator
           </p>
           <p className="text-sm mb-10" style={{ color: 'var(--text-muted)' }}>
-            7-day scenario &bull; Peace to War escalation &bull; 10 Gripen E aircraft
+            30-day campaign &bull; Peace to War escalation &bull; 10 Gripen E aircraft
           </p>
-
-          {/* How it works summary — right on start screen */}
-          <div className="max-w-md mx-auto mb-8 text-left rounded-xl p-4"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-            <p className="font-mono text-[10px] font-semibold tracking-widest mb-3"
-              style={{ color: 'var(--text-muted)' }}>HOW IT WORKS</p>
-            <div className="space-y-2">
-              {[
-                { num: '1', text: 'Receive daily missions (Air Tasking Order)', color: '#3b82f6' },
-                { num: '2', text: 'Prep aircraft from hangar — click PREP buttons', color: '#eab308' },
-                { num: '3', text: 'Assign ready aircraft to missions', color: '#ef4444' },
-                { num: '4', text: 'Advance time — watch missions fly and results unfold', color: '#22c55e' },
-              ].map(({ num, text, color }) => (
-                <div key={num} className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-md flex items-center justify-center font-mono text-xs font-bold shrink-0"
-                    style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}>
-                    {num}
-                  </span>
-                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Feature badges */}
-          <div className="flex items-center justify-center gap-4 mb-8 stagger-fade-in">
-            {[
-              { icon: Shield, label: 'Fleet Command', color: '#3b82f6', desc: 'Manage 10 Gripen E' },
-              { icon: Crosshair, label: 'Mission Ops', color: '#ef4444', desc: 'ATO-driven sorties' },
-              { icon: Radar, label: 'AI Advisor', color: '#06b6d4', desc: 'Intelligent allocation' },
-              { icon: Zap, label: 'Dice System', color: '#eab308', desc: 'Board game mechanics' },
-            ].map(({ icon: Icon, label, color, desc }, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 px-5 py-3 rounded-xl transition-all duration-300"
-                style={{
-                  background: `${color}08`,
-                  border: `1px solid ${color}20`,
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = `${color}15`;
-                  e.currentTarget.style.borderColor = `${color}40`;
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = `${color}08`;
-                  e.currentTarget.style.borderColor = `${color}20`;
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}>
-                <div className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ background: `${color}15` }}>
-                  <Icon size={18} style={{ color }} />
-                </div>
-                <span className="text-[11px] font-mono font-semibold" style={{ color }}>{label}</span>
-                <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{desc}</span>
-              </div>
-            ))}
-          </div>
 
           <ShimmerButton
             onClick={startGame}
@@ -194,15 +200,9 @@ export default function App() {
             variant="primary"
             className="px-10 py-4 rounded-xl text-sm tracking-wider"
           >
-            {loading ? 'INITIALIZING...' : 'START NEW GAME'}
+            {loading ? 'INITIALIZING...' : 'START COMMAND CENTER'}
             <ChevronRight size={18} />
           </ShimmerButton>
-
-          {error && (
-            <p className="text-xs mt-4" style={{ color: 'var(--status-maintenance)' }}>
-              {error}
-            </p>
-          )}
         </div>
       </div>
     );
@@ -210,98 +210,215 @@ export default function App() {
 
   // ─── MAIN DASHBOARD ───
   return (
-    <div className={`min-h-screen flex flex-col transition-opacity duration-500 ${dashboardReady ? 'opacity-100' : 'opacity-0'}`}
-      style={{ background: 'var(--bg-primary)' }}>
+    <div className={`min-h-screen flex flex-col relative overflow-x-hidden transition-opacity duration-500 ${dashboardReady ? 'opacity-100' : 'opacity-0'}`}
+      style={{ background: '#0a0b0e' }}>
 
-      {/* Onboarding Tutorial (first time) */}
-      {showOnboarding && (
-        <OnboardingTutorial onComplete={handleOnboardingComplete} />
-      )}
+      {/* 1. Top UI Layer (Z-20) */}
+      <div className="relative z-20 flex flex-col w-full shrink-0">
+        <TopBar
+          gameState={gameState}
+          onAdvance={advanceTurn}
+          onAdvanceMultiple={advanceMultiple}
+          onNewGame={startGame}
+          onToggleChat={() => setChatOpen(!chatOpen)}
+          onToggleHelp={() => {
+            setShowHelp(!showHelp);
+            setHelpAttention(false);
+          }}
+          onCompare={handleCompare}
+          loading={loading}
+          helpAttention={helpAttention}
+        />
+        <DecisionImpactPanel metrics={metrics} prevMetrics={prevMetrics} />
+        
+        {error && (
+          <div className="mx-6 mt-2 px-3 py-2 rounded-lg flex items-center gap-2 animate-fade-in-up"
+               style={{ background: 'rgba(239,68,68,0.3)', backdropFilter: 'blur(10px)', border: '1px solid rgba(239,68,68,0.5)' }}>
+            <AlertTriangle size={12} style={{ color: '#ef4444' }} />
+            <span className="text-xs text-red-100">{error}</span>
+          </div>
+        )}
+        <NextActionHint gameState={gameState} />
+      </div>
 
-      {/* Help Panel */}
-      <HelpPanel isOpen={showHelp} onClose={() => setShowHelp(false)} />
-
-      {/* Top Bar */}
-      <TopBar
-        gameState={gameState}
-        onAdvance={advanceTurn}
-        onAdvanceMultiple={advanceMultiple}
-        onNewGame={startGame}
-        onToggleChat={() => setChatOpen(!chatOpen)}
-        onToggleHelp={() => setShowHelp(!showHelp)}
-        loading={loading}
-      />
-
-      {/* Smart "What to do next" hint bar */}
-      <NextActionHint gameState={gameState} />
-
-      {/* Turn Results */}
-      <TurnResult events={gameState.turn_results} />
-
-      {/* Main Content — 3 Column Layout */}
-      <div className="flex-1 flex gap-3 p-3 overflow-hidden">
-        {/* Left — ATO Panel */}
-        <div className="w-72 shrink-0 glass-panel rounded-xl p-3 overflow-hidden flex flex-col animate-fade-in-up"
-          style={{ border: '1px solid var(--border-color)', animationDelay: '100ms' }}>
-          <ATOPanel
-            ato={gameState.current_ato}
-            aircraft={gameState.aircraft}
-            phase={gameState.phase}
-            onAssign={assignAircraft}
-            onUnassign={unassignAircraft}
-            onAiSuggest={handleAiSuggest}
-            loading={loading}
-          />
+      {/* 2. Main 3-Column Workspace Layer */}
+      <div className="relative z-10 flex-1 flex flex-wrap xl:flex-nowrap my-4 px-4 md:px-6 gap-6 overflow-visible">
+        
+        {/* LEFT SIDEBAR: ATO */}
+        <div className="h-full flex flex-col shrink-0 min-w-0">
+          <WidgetPanel title="AIR TASKING ORDER" side="left" width="300px">
+            <div className="flex flex-col h-full gap-4 pb-10">
+              <ATOPanel
+                ato={gameState.current_ato}
+                aircraft={gameState.aircraft}
+                phase={gameState.phase}
+                currentHour={gameState.current_hour}
+                onAssign={assignAircraft}
+                onUnassign={unassignAircraft}
+                onPlan={planMission}
+                onAiSuggest={handleAiSuggest}
+                loading={loading}
+              />
+            </div>
+          </WidgetPanel>
         </div>
 
-        {/* Center — Fleet + Timeline + Log */}
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
-          {/* Fleet Board */}
-          <div className="glass-panel rounded-xl p-3 flex-1 animate-fade-in-up"
-            style={{ border: '1px solid var(--border-color)', animationDelay: '200ms' }}>
-            <FleetBoard
-              aircraft={gameState.aircraft}
-              onSelect={setSelectedAircraft}
-              onPrep={prepAircraft}
-            />
+        {/* CENTER OPERATIONS WORKSPACE */}
+        <div className="flex-1 h-full flex flex-col gap-6 overflow-visible min-w-[320px]">
+
+          <div className="shrink-0 flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] tracking-[0.24em]" style={{ color: 'var(--text-muted)' }}>
+                OPS WORKSPACE
+              </span>
+              <div className="flex items-center gap-1 rounded-xl p-1"
+                style={{ background: 'rgba(12,14,18,0.72)', border: '1px solid var(--border-color)' }}>
+                <button
+                  onClick={() => setCenterView('map')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] transition-colors"
+                  style={{
+                    background: centerView === 'map' ? 'rgba(56,189,248,0.18)' : 'transparent',
+                    color: centerView === 'map' ? '#7dd3fc' : 'var(--text-muted)',
+                  }}
+                >
+                  <Radar size={12} />
+                  Map
+                </button>
+                <button
+                  onClick={() => setCenterView('fleet')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] transition-colors"
+                  style={{
+                    background: centerView === 'fleet' ? 'rgba(34,197,94,0.18)' : 'transparent',
+                    color: centerView === 'fleet' ? '#86efac' : 'var(--text-muted)',
+                  }}
+                >
+                  <Plane size={12} />
+                  Fleet Ops
+                </button>
+              </div>
+            </div>
+
+            <div className="font-mono text-[10px] px-3 py-1.5 rounded-xl"
+              style={{ background: 'rgba(12,14,18,0.72)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+              {centerView === 'map'
+                ? 'Route awareness, flight tracking, mission package status'
+                : 'Full fleet board for aircraft prep and detailed management'}
+            </div>
+          </div>
+
+          <div className="flex-1 relative rounded-2xl overflow-hidden shadow-2xl border border-[var(--border-color)] min-h-[400px]">
+            <div className="absolute inset-0 z-0 bg-[#0f1014] animate-pulse" />
+            {centerView === 'map' ? (
+              <TacticalMap gameState={gameState} onSelectAircraft={setSelectedAircraft} />
+            ) : (
+              <div className="absolute inset-0 p-5 overflow-y-auto"
+                style={{
+                  background: 'radial-gradient(circle at top left, rgba(34,197,94,0.08), transparent 28%), radial-gradient(circle at bottom right, rgba(59,130,246,0.08), transparent 30%), #0f1014',
+                }}>
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <div className="font-mono text-[10px] tracking-[0.22em]" style={{ color: 'var(--text-muted)' }}>
+                      FLEET OPERATIONS BOARD
+                    </div>
+                    <div className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                      Select an aircraft to inspect loadout, service margin, and prep actions.
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setCenterView('map')}
+                    className="px-3 py-2 rounded-lg font-mono text-[11px] transition-colors"
+                    style={{ background: 'rgba(56,189,248,0.14)', color: '#7dd3fc', border: '1px solid rgba(56,189,248,0.22)' }}
+                  >
+                    Return to Map
+                  </button>
+                </div>
+                <FleetBoard
+                  aircraft={gameState.aircraft}
+                  onSelect={setSelectedAircraft}
+                  onPrep={prepAircraft}
+                />
+              </div>
+            )}
           </div>
 
           {/* Timeline */}
-          <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-            <TimelineBar ato={gameState.current_ato} currentHour={gameState.current_hour} />
-          </div>
-
-          {/* Event Log */}
-          <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-            <EventLog events={gameState.event_log} />
+          <div className="shrink-0 w-full mb-2">
+             <TimelineBar ato={gameState.current_ato} currentHour={gameState.current_hour} />
           </div>
         </div>
 
-        {/* Right — Resource Panel */}
-        <div className="w-56 shrink-0 glass-panel rounded-xl p-3 overflow-hidden flex flex-col animate-fade-in-up"
-          style={{ border: '1px solid var(--border-color)', animationDelay: '150ms' }}>
-          <ResourcePanel
-            resources={gameState.resources}
-            personnel={gameState.personnel}
-          />
+        {/* RIGHT SIDEBAR: Resources */}
+        <div className="h-full flex flex-col shrink-0 min-w-0">
+          <WidgetPanel title="BASE STATUS" side="right" width="300px">
+             <div className="flex flex-col gap-5 pb-10">
+               <ResourcePanel
+                  resources={gameState.resources}
+                  personnel={gameState.personnel}
+               />
+             </div>
+          </WidgetPanel>
         </div>
+
       </div>
 
-      {/* Aircraft Detail Modal */}
+      {/* 3. Overlays & Modals (Z-50) */}
+      <TurnResult events={gameState.turn_results} />
+      
+      {/* Event Log Toggle & Popup */}
+      <div className="fixed bottom-6 right-6 z-[60]">
+        <button
+          onClick={() => setShowEventLog(!showEventLog)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg transition-transform hover:scale-105"
+          style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
+        >
+          <ScrollText size={16} style={{ color: 'var(--text-secondary)' }} />
+          <span className="font-mono text-xs font-bold tracking-wider" style={{ color: 'var(--text-primary)' }}>
+            EVENT LOG
+          </span>
+          {gameState.event_log && gameState.event_log.some(e => e.severity === 'critical' || e.severity === 'warning') && (
+            <span className="flex h-2.5 w-2.5 relative ml-1">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+          )}
+        </button>
+      </div>
+
+      {showEventLog && (
+        <div className="fixed bottom-20 right-4 md:right-6 z-[60] w-[min(500px,calc(100vw-2rem))] shadow-2xl animate-fade-in-up">
+           <EventLog events={gameState.event_log} onClose={() => setShowEventLog(false)} />
+        </div>
+      )}
+      
+      {showOnboarding && <OnboardingTutorial onComplete={handleOnboardingComplete} />}
+      <HelpPanel isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      
       {selectedAircraft && (
         <AircraftDetail
           aircraft={selectedAircraft}
+          currentAto={gameState.current_ato}
           onClose={() => setSelectedAircraft(null)}
           onPrep={prepAircraft}
           onArm={handleArm}
         />
       )}
 
-      {/* AI Chat Drawer */}
-      <AIChat
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        onSend={aiChatSend}
+      <AIChat isOpen={chatOpen} onClose={() => setChatOpen(false)} onSend={aiChatSend} />
+      
+      <CompareMode
+        isOpen={showCompare}
+        onClose={() => setShowCompare(false)}
+        comparison={comparison}
+        loading={compareLoading}
+        onCompare={fetchCompare}
+      />
+
+      <AIRecommendationCards
+        isOpen={showRecs}
+        recommendations={recommendations}
+        loading={recsLoading}
+        onClose={() => setShowRecs(false)}
+        onApply={handleApplyRecommendations}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { Clock, Shield, Eye, Target, Zap, Radio } from 'lucide-react';
+import { formatClockTime, formatHours } from '../lib/format';
 
 const MISSION_COLORS = {
   QRA: '#eab308',
@@ -31,21 +32,21 @@ export default function TimelineBar({ ato, currentHour }) {
         </span>
       </div>
 
-      <div className="relative">
+      <div className="relative overflow-x-auto">
         {/* Hour marks */}
-        <div className="flex">
+        <div className="flex min-w-[720px]">
           {hours.map(h => (
             <div key={h} className="flex-1 text-center">
               <span className="font-mono text-[8px]"
                 style={{ color: h === currentHour ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                {String(h).padStart(2, '0')}
+                {formatClockTime(h)}
               </span>
             </div>
           ))}
         </div>
 
         {/* Timeline track */}
-        <div className="relative h-8 mt-1 rounded"
+        <div className="relative h-10 mt-1 rounded min-w-[720px]"
           style={{ background: 'var(--bg-primary)' }}>
 
           {/* Current hour indicator */}
@@ -67,11 +68,12 @@ export default function TimelineBar({ ato, currentHour }) {
 
             return (
               <div key={mission.id}
-                className="absolute top-1 flex items-center gap-0.5 rounded px-1 text-[8px] font-mono font-semibold"
+                className="absolute top-1 flex items-center gap-1 rounded px-1.5 text-[8px] font-mono font-semibold"
                 style={{
                   left: `${left}%`,
-                  width: `${Math.max(width, 3)}%`,
-                  height: '24px',
+                  width: `${Math.max(width, 5)}%`,
+                  minWidth: '48px',
+                  height: '30px',
                   backgroundColor: `${color}${completed ? '30' : failed ? '20' : '50'}`,
                   color: completed ? `${color}88` : color,
                   border: `1px solid ${color}${completed ? '30' : '60'}`,
@@ -80,7 +82,7 @@ export default function TimelineBar({ ato, currentHour }) {
                 }}>
                 <Icon size={8} />
                 <span>{mission.type}</span>
-                <span className="opacity-60">{mission.required_aircraft}</span>
+                <span className="opacity-60">{formatHours(mission.duration_hours, 0)}</span>
               </div>
             );
           })}

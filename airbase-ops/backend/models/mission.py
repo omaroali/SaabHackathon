@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -32,6 +33,12 @@ class Mission(BaseModel):
     requires_pods: bool = False
     missiles_per_aircraft: int = 2
     bombs_per_aircraft: int = 0
+    is_planned: bool = False
+    planning_deadline_hour: int = 24  # Hours before launch it must be planned
+    # Geographic target area
+    target_lat: Optional[float] = None
+    target_lon: Optional[float] = None
+    area_name: str = ""
 
 
 class DailyATO(BaseModel):

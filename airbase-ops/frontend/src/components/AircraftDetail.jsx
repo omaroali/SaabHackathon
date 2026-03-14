@@ -1,5 +1,5 @@
 import { X, Fuel, Crosshair, Bomb, Scan, Wrench, Clock, Plane, Shield, Activity } from 'lucide-react';
-
+import { formatClockTime, formatHours, formatInteger } from '../lib/format';
 const STATUS_LABEL = {
   HANGAR: 'In Hangar',
   PRE_FLIGHT: 'Pre-Flight Preparation',
@@ -9,16 +9,26 @@ const STATUS_LABEL = {
   MAINTENANCE: 'Under Maintenance',
 };
 
-export default function AircraftDetail({ aircraft, onClose, onPrep, onArm }) {
+function findRelatedMission(aircraft, currentAto) {
+  const missions = currentAto?.missions || [];
+  if (aircraft.assigned_mission_id) {
+    const direct = missions.find((mission) => mission.id === aircraft.assigned_mission_id);
+    if (direct) return direct;
+  }
+  return missions.find((mission) => mission.assigned_aircraft_ids.includes(aircraft.id)) || null;
+}
+
+export default function AircraftDetail({ aircraft, currentAto, onClose, onPrep, onArm }) {
   if (!aircraft) return null;
   const fuelPct = (aircraft.fuel_level / aircraft.fuel_capacity) * 100;
+  const mission = findRelatedMission(aircraft, currentAto);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}>
       <div
-        className="glass-panel rounded-2xl p-6 w-full max-w-md animate-fade-in-up"
+        className="glass-panel rounded-2xl p-6 w-full max-w-md max-h-[88vh] overflow-y-auto animate-fade-in-up"
         onClick={e => e.stopPropagation()}
         style={{ border: '1px solid var(--border-accent)' }}
       >
@@ -65,7 +75,7 @@ export default function AircraftDetail({ aircraft, onClose, onPrep, onArm }) {
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Time Left</span>
                   <p className="font-mono" style={{ color: 'var(--status-maintenance)' }}>
-                    {aircraft.maintenance.hours_remaining < 999 ? `${aircraft.maintenance.hours_remaining.toFixed(1)}h` : 'GROUNDED'}
+                    {aircraft.maintenance.hours_remaining < 999 ? formatHours(aircraft.maintenance.hours_remaining) : 'GROUNDED'}
                   </p>
                 </div>
                 <div>
@@ -87,7 +97,7 @@ export default function AircraftDetail({ aircraft, onClose, onPrep, onArm }) {
               <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>FUEL</span>
             </div>
             <p className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>
-              {Math.round(aircraft.fuel_level)}L / {aircraft.fuel_capacity}L
+              {formatInteger(aircraft.fuel_level)}L / {formatInteger(aircraft.fuel_capacity)}L
             </p>
             <div className="w-full rounded-full h-1.5 mt-1.5" style={{ background: 'var(--bg-secondary)' }}>
               <div className="rounded-full h-1.5 transition-all"
@@ -101,7 +111,7 @@ export default function AircraftDetail({ aircraft, onClose, onPrep, onArm }) {
               <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>FLIGHT HOURS</span>
             </div>
             <p className="font-mono text-sm" style={{ color: 'var(--text-primary)' }}>
-              {aircraft.total_flight_hours.toFixed(1)}h
+              {formatHours(aircraft.total_flight_hours)}
             </p>
           </div>
 
@@ -113,7 +123,7 @@ export default function AircraftDetail({ aircraft, onClose, onPrep, onArm }) {
             <p className="font-mono text-sm" style={{
               color: aircraft.hours_until_service < 15 ? 'var(--status-maintenance)' : 'var(--text-primary)'
             }}>
-              {Math.round(aircraft.hours_until_service)}h
+              {formatHours(aircraft.hours_until_service, 0)}
             </p>
           </div>
 
@@ -129,6 +139,41 @@ export default function AircraftDetail({ aircraft, onClose, onPrep, onArm }) {
             </div>
           </div>
         </div>
+
+        {mission && (
+          <div className="rounded-lg p-3 mb-4" style={{ background: 'var(--bg-primary)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>MISSION LINK</span>
+              <span className="font-mono text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {mission.id}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Type</span>
+                <p className="font-mono" style={{ color: 'var(--text-primary)' }}>{mission.type}</p>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Area</span>
+                <p className="font-mono" style={{ color: 'var(--text-primary)' }}>{mission.area_name || 'No area'}</p>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Scheduled</span>
+                <p className="font-mono" style={{ color: 'var(--text-primary)' }}>
+                  {formatClockTime(mission.scheduled_hour)}
+                </p>
+              </div>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }}>Time Remaining</span>
+                <p className="font-mono" style={{ color: 'var(--text-primary)' }}>
+                  {aircraft.status === 'ON_MISSION'
+                    ? formatHours(aircraft.mission_hours_remaining)
+                    : formatHours(mission.duration_hours)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2">

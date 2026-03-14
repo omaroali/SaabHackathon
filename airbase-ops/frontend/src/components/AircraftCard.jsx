@@ -1,6 +1,7 @@
 import { Fuel, Crosshair, Bomb, Scan, Wrench, Shield } from 'lucide-react';
 import GlowCard from './GlowCard';
 import AnimatedProgressBar from './AnimatedProgressBar';
+import { formatHours } from '../lib/format';
 
 const STATUS_CONFIG = {
   HANGAR: { color: '#6b7280', label: 'HANGAR', glow: '' },
@@ -56,13 +57,13 @@ export default function AircraftCard({ aircraft, onSelect, onPrep }) {
           )}
           {aircraft.status === 'ON_MISSION' && (
             <span className="text-[10px] ml-1 opacity-80">
-              {aircraft.mission_hours_remaining.toFixed(1)}h
+              {formatHours(aircraft.mission_hours_remaining)}
             </span>
           )}
           {aircraft.status === 'MAINTENANCE' && aircraft.maintenance && (
             <span className="text-[10px] ml-1 opacity-80">
               {aircraft.maintenance.hours_remaining < 999
-                ? `${aircraft.maintenance.hours_remaining.toFixed(1)}h`
+                ? formatHours(aircraft.maintenance.hours_remaining)
                 : 'GROUNDED'}
             </span>
           )}
@@ -91,8 +92,8 @@ export default function AircraftCard({ aircraft, onSelect, onPrep }) {
         <div className="flex items-center justify-between text-[10px]">
           <div className="flex items-center gap-1">
             <Wrench size={10} style={{ color: svcLow ? 'var(--status-maintenance)' : 'var(--text-muted)' }} />
-            <span className="font-mono" style={{ color: svcLow ? 'var(--status-maintenance)' : 'var(--text-secondary)' }}>
-              {Math.round(aircraft.hours_until_service)}h
+              <span className="font-mono" style={{ color: svcLow ? 'var(--status-maintenance)' : 'var(--text-secondary)' }}>
+              {formatHours(aircraft.hours_until_service, 0)}
             </span>
           </div>
           <div className="flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>

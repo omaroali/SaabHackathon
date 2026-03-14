@@ -14,7 +14,7 @@ class Phase(str, Enum):
 
 class GameEvent(BaseModel):
     turn: int
-    hour: int
+    hour: float
     day: int
     message: str
     severity: str = "info"
@@ -23,7 +23,7 @@ class GameEvent(BaseModel):
 
 class GameState(BaseModel):
     current_day: int = 1
-    current_hour: int = 6
+    current_hour: float = 0.0
     current_turn: int = 0
     phase: Phase = Phase.PEACE
     aircraft: list[Aircraft] = []
@@ -33,13 +33,16 @@ class GameState(BaseModel):
     event_log: list[GameEvent] = []
     turn_results: list[GameEvent] = []
     is_game_over: bool = False
-    runway_damaged_hours: int = 0
+    runway_damaged_hours: float = 0.0
+    # Air base location — F 17 Kallinge, Blekinge, Sweden
+    base_lat: float = 56.256
+    base_lon: float = 15.268
 
     @staticmethod
     def phase_for_day(day: int) -> Phase:
-        if day <= 1:
+        if day <= 10:
             return Phase.PEACE
-        elif day <= 4:
+        elif day <= 20:
             return Phase.CRISIS
         else:
             return Phase.WAR
